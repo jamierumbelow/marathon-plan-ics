@@ -194,9 +194,9 @@ const { error, value } = ics.createEvents(
         ],
         duration: { hours: durationHours, minutes: durationMinutes },
         title,
-        description: `${run.distanceMiles} miles at ${displayPace(
+        description: `${run.distanceMiles} miles in ${displayPace(
           run.paceSeconds
-        )}/m`,
+        )}`,
         busyStatus: "BUSY",
       };
     })
