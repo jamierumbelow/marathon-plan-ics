@@ -61,14 +61,14 @@ type Run = {
 const calculatePace = (distanceMiles: number): number =>
   distanceMiles * parsedGoalPaceSecondsPerMile;
 
-const displayPace = (paceSeconds: number): string => {
+const displayTimeLength = (paceSeconds: number): string => {
   if (paceSeconds > 3600) {
-    return `${Math.floor(paceSeconds / 3600)}h ${Math.floor(
+    return `${Math.floor(paceSeconds / 3600)}:${Math.floor(
       (paceSeconds % 3600) / 60
-    )}m ${paceSeconds % 60}s`;
+    )}:${paceSeconds % 60}`;
   }
 
-  return `${Math.floor(paceSeconds / 60)}m ${paceSeconds % 60}s`;
+  return `${Math.floor(paceSeconds / 60)}:${Math.floor(paceSeconds) % 60}`;
 };
 
 // We'll generate a list of dates, starting from the marathon
@@ -174,8 +174,9 @@ for (let i = 0; i < weeksUntilMarathonIncludingMarathonWeek; i++) {
 
 const { error, value } = ics.createEvents(
   plan
+    .slice(0, 3)
     .filter((x): x is Run => !!x)
-    .map((run) => {
+    .map((run, i) => {
       const startDate = dayjs(run.date);
       const durationHours = Math.floor(run.paceSeconds / 3600);
       const durationMinutes = Math.ceil((run.paceSeconds % 3600) / 60);
@@ -183,7 +184,16 @@ const { error, value } = ics.createEvents(
       const runsStartTimeMinutes = Math.floor(
         (parsedRunsStartTime % 3600) / 60
       );
-      const title = run.type === "easy" ? "Run" : "Tempo run";
+      const timeLength = displayTimeLength(run.paceSeconds);
+      const pace = displayTimeLength(
+        Math.floor(run.paceSeconds / run.distanceMiles)
+      );
+
+      let title = run.type === "easy" ? "Run" : "Tempo run";
+      title += ` (${run.distanceMiles} miles in ${timeLength}; ${pace} pace)`;
+      if (i === plan.length - 1) {
+        title = "Marathon 🏃‍♂️";
+      }
 
       return {
         start: [
@@ -195,9 +205,8 @@ const { error, value } = ics.createEvents(
         ],
         duration: { hours: durationHours, minutes: durationMinutes },
         title,
-        description: `${run.distanceMiles} miles in ${displayPace(
-          run.paceSeconds
-        )}`,
+        categories: ["jamierumbelow/marathon-plan-ics"],
+        description: `${run.distanceMiles} miles in ${timeLength}, at ${pace} pace`,
         busyStatus: "BUSY",
       };
     })
