@@ -138,17 +138,18 @@ const halHigdonPlanMiles = [
 
 // Count the number of weeks until the marathon
 const weeksUntilMarathon = parsedDate.diff(parsedTrainingStartDate, "week");
+const weeksUntilMarathonIncludingMarathonWeek = weeksUntilMarathon + 1;
 
 // The plan is 18 weeks long, so we'll repeat the first week
 // until we get to 18 weeks out.
-const weeksUntilMarathonMod18 = weeksUntilMarathon % 18;
+const weeksUntilMarathonMod18 = weeksUntilMarathonIncludingMarathonWeek % 18;
 
 // Generate the plan by looping through the weeks until the marathon
 // and indexing into the plan.
 
 const plan: (Run | null)[] = [];
 
-for (let i = 0; i < weeksUntilMarathon; i++) {
+for (let i = 0; i < weeksUntilMarathonIncludingMarathonWeek; i++) {
   for (let j = 0; j < 7; j++) {
     const weekIndex =
       i <= weeksUntilMarathonMod18 ? 0 : i - weeksUntilMarathonMod18;
