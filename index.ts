@@ -181,7 +181,6 @@ for (let i = 0; i < weeksUntilMarathonIncludingMarathonWeek; i++) {
 
 const { error, value } = ics.createEvents(
   plan
-    .slice(0, 3)
     .filter((x): x is Run => !!x)
     .map((run, i) => {
       const startDate = dayjs(run.date);
@@ -197,7 +196,7 @@ const { error, value } = ics.createEvents(
       );
 
       let title = run.type === "easy" ? "Run" : "Tempo run";
-      title += ` (${run.distanceMiles} miles in ${timeLength}; ${pace} pace)`;
+      title += ` (${run.distanceMiles} miles; ${pace}/mile pace)`;
       if (i === plan.length - 1) {
         title = "Marathon 🏃‍♂️";
       }
@@ -213,7 +212,7 @@ const { error, value } = ics.createEvents(
         duration: { hours: durationHours, minutes: durationMinutes },
         title,
         categories: ["jamierumbelow/marathon-plan-ics"],
-        description: `${run.distanceMiles} miles in ${timeLength}, at ${pace} pace`,
+        description: `${run.distanceMiles} miles in ${timeLength}, at ${pace}/mile pace`,
         busyStatus: "BUSY",
       };
     })
