@@ -213,3 +213,4 @@ if (!value) {
 }
 
 write("plan.ics", value);
+console.log("🎉 written to plan.ics");
