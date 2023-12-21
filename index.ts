@@ -62,13 +62,20 @@ const calculatePace = (distanceMiles: number): number =>
   distanceMiles * parsedGoalPaceSecondsPerMile;
 
 const displayTimeLength = (paceSeconds: number): string => {
-  if (paceSeconds > 3600) {
-    return `${Math.floor(paceSeconds / 3600)}:${Math.floor(
-      (paceSeconds % 3600) / 60
-    )}:${paceSeconds % 60}`;
+  let hours = Math.floor(paceSeconds / 3600);
+  let minutes = Math.floor((paceSeconds % 3600) / 60);
+  let seconds = Math.floor(paceSeconds % 60);
+  let timeLength = "";
+
+  if (hours) {
+    timeLength += `${hours}`;
   }
 
-  return `${Math.floor(paceSeconds / 60)}:${Math.floor(paceSeconds) % 60}`;
+  timeLength += `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+
+  return timeLength;
 };
 
 // We'll generate a list of dates, starting from the marathon
