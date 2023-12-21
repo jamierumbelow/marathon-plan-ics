@@ -1,7 +1,9 @@
+import { write } from "bun";
 import dayjs from "dayjs";
+import * as ics from "ics";
 
 const usage =
-  "Usage: bun run index.ts [MARATHON DATE: YYYY-MM-DD] [GOAL TIME: HH:MM:SS]";
+  "Usage: bun run index.ts [MARATHON DATE: YYYY-MM-DD] [GOAL TIME: HH:MM:SS] [TRAINING START DATE: YYYY-MM-DD] [RUNS START TIME: HH:MM:SS]";
 
 // Parse the date
 
@@ -26,14 +28,32 @@ if (!goalTime || !parsedGoalTimeSeconds) {
   process.exit(1);
 }
 
+// Parse the training start date
+
+const trainingStartDate = process.argv[4];
+const parsedTrainingStartDate = dayjs(trainingStartDate, "YYYY-MM-DD");
+if (!trainingStartDate || !parsedTrainingStartDate.isValid()) {
+  console.error(usage);
+  process.exit(1);
+}
+
+// Parse the runs start time
+
+const runsStartTime = process.argv[5];
+const parsedRunsStartTime = parseTime(runsStartTime);
+if (!runsStartTime || !parsedRunsStartTime) {
+  console.error(usage);
+  process.exit(1);
+}
+
 // Let's set up some useful constants and helper functions
 
-const startTime = "07:00:00";
 const parsedGoalPaceSecondsPerMile = parsedGoalTimeSeconds / 26.2;
 const easyRunMultiplier = 1.5;
 
 type Run = {
   date: string;
+  type: "easy" | "tempo";
   distanceMiles: number;
   paceSeconds: number;
 };
@@ -51,16 +71,8 @@ const displayPace = (paceSeconds: number): string => {
   return `${Math.floor(paceSeconds / 60)}m ${paceSeconds % 60}s`;
 };
 
-const run = (
-  distanceMiles: number,
-  paceSeconds: number
-): Omit<Run, "date"> => ({
-  distanceMiles,
-  paceSeconds,
-});
-
 // We'll generate a list of dates, starting from the marathon
-// date and going back to today.
+// date and going back to trainingStartDate.
 //
 // The plan is based on Hal Higdon's Novice 2 marathon training plan:
 // https://www.halhigdon.com/training-programs/marathon-training/novice-2-marathon/
@@ -86,11 +98,13 @@ const run = (
 // 18	Rest	3 mi run	2 mi run	Rest	Rest	2 mi run	Marathon
 
 const tempoRun = (distanceMiles: number): Omit<Run, "date"> => ({
+  type: "tempo",
   distanceMiles,
   paceSeconds: calculatePace(distanceMiles),
 });
 
 const easyRun = (distanceMiles: number): Omit<Run, "date"> => ({
+  type: "easy",
   distanceMiles,
   paceSeconds: calculatePace(distanceMiles) * easyRunMultiplier,
 });
@@ -123,8 +137,7 @@ const halHigdonPlanMiles = [
 // already got tennis and gym stuff.
 
 // Count the number of weeks until the marathon
-const today = dayjs();
-const weeksUntilMarathon = parsedDate.diff(today, "week");
+const weeksUntilMarathon = parsedDate.diff(parsedTrainingStartDate, "week");
 
 // The plan is 18 weeks long, so we'll repeat the first week
 // until we get to 18 weeks out.
@@ -144,7 +157,10 @@ for (let i = 0; i < weeksUntilMarathon; i++) {
 
     if (runObj) {
       plan.push({
-        date: today.add(i, "week").add(j, "day").format("YYYY-MM-DD"),
+        date: parsedTrainingStartDate
+          .add(i, "week")
+          .add(j, "day")
+          .format("YYYY-MM-DD"),
         ...runObj,
       });
     } else {
@@ -153,4 +169,47 @@ for (let i = 0; i < weeksUntilMarathon; i++) {
   }
 }
 
-console.log(plan);
+// Fantastic! Let's now convert this to an iCal file.
+
+const { error, value } = ics.createEvents(
+  plan
+    .filter((x): x is Run => !!x)
+    .map((run) => {
+      const startDate = dayjs(run.date);
+      const durationHours = Math.floor(run.paceSeconds / 3600);
+      const durationMinutes = Math.ceil((run.paceSeconds % 3600) / 60);
+      const runsStartTimeHours = Math.floor(parsedRunsStartTime / 3600);
+      const runsStartTimeMinutes = Math.floor(
+        (parsedRunsStartTime % 3600) / 60
+      );
+      const title = run.type === "easy" ? "Run" : "Tempo run";
+
+      return {
+        start: [
+          startDate.year(),
+          startDate.month() + 1,
+          startDate.date(),
+          runsStartTimeHours,
+          runsStartTimeMinutes,
+        ],
+        duration: { hours: durationHours, minutes: durationMinutes },
+        title,
+        description: `${run.distanceMiles} miles at ${displayPace(
+          run.paceSeconds
+        )}/m`,
+        busyStatus: "BUSY",
+      };
+    })
+);
+
+if (error) {
+  console.error(`error generating ics: ${error}`);
+  process.exit(1);
+}
+
+if (!value) {
+  console.error("no value generated");
+  process.exit(1);
+}
+
+write("plan.ics", value);
